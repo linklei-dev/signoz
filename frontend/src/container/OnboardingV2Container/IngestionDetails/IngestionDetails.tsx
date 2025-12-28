@@ -1,17 +1,10 @@
 import { Skeleton, Typography } from 'antd';
 import logEvent from 'api/common/logEvent';
 import { AxiosError } from 'axios';
-import { useGetDeploymentsData } from 'hooks/CustomDomain/useGetDeploymentsData';
+import { useGetGlobalConfig } from 'hooks/globalConfig/useGetGlobalConfig';
 import { useGetAllIngestionsKeys } from 'hooks/IngestionKeys/useGetAllIngestionKeys';
 import { useNotifications } from 'hooks/useNotifications';
-import {
-	ArrowUpRight,
-	Copy,
-	Info,
-	Key,
-	MapPin,
-	TriangleAlert,
-} from 'lucide-react';
+import { ArrowUpRight, Copy, Info, Key, TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useCopyToClipboard } from 'react-use';
 import { IngestionKeyProps } from 'types/api/ingestionKeys/types';
@@ -59,11 +52,11 @@ export default function OnboardingIngestionDetails(): JSX.Element {
 	});
 
 	const {
-		data: deploymentsData,
-		isLoading: isLoadingDeploymentsData,
-		isFetching: isFetchingDeploymentsData,
-		isError: isDeploymentsDataError,
-	} = useGetDeploymentsData(true);
+		data: globalConfig,
+		isLoading: isLoadingGlobalConfig,
+		isFetching: isFetchingGlobalConfig,
+		isError: isErrorGlobalConfig,
+	} = useGetGlobalConfig(true);
 
 	const handleCopyKey = (text: string): void => {
 		handleCopyToClipboard(text);
@@ -114,8 +107,8 @@ export default function OnboardingIngestionDetails(): JSX.Element {
 
 						<div className="ingestion-key-details-section-key">
 							{isIngestionKeysLoading ||
-							isLoadingDeploymentsData ||
-							isFetchingDeploymentsData ? (
+							isLoadingGlobalConfig ||
+							isFetchingGlobalConfig ? (
 								<div className="skeleton-container">
 									<Skeleton.Input active className="skeleton-input" />
 									<Skeleton.Input active className="skeleton-input" />
@@ -124,16 +117,16 @@ export default function OnboardingIngestionDetails(): JSX.Element {
 								</div>
 							) : (
 								<div className="ingestion-key-region-details-section">
-									{!isDeploymentsDataError &&
-										!isLoadingDeploymentsData &&
-										!isFetchingDeploymentsData && (
+									{!isErrorGlobalConfig &&
+										!isLoadingGlobalConfig &&
+										!isFetchingGlobalConfig && (
 											<div className="ingestion-region-container">
 												<Typography.Text className="ingestion-region-label">
-													<MapPin size={14} /> Region
+													Ingestion URL
 												</Typography.Text>
 
 												<Typography.Text className="ingestion-region-value-copy">
-													{deploymentsData?.data?.data?.cluster.region.name}
+													{globalConfig?.data?.data?.ingestion_url}
 
 													<Copy
 														size={14}
@@ -144,9 +137,7 @@ export default function OnboardingIngestionDetails(): JSX.Element {
 																{},
 															);
 
-															handleCopyKey(
-																deploymentsData?.data?.data?.cluster.region.name || '',
-															);
+															handleCopyKey(`${globalConfig?.data?.data?.ingestion_url}`);
 														}}
 													/>
 												</Typography.Text>
