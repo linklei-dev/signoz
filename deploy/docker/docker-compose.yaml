@@ -132,6 +132,8 @@ services:
       - TELEMETRY_ENABLED=true
       - DEPLOYMENT_TYPE=docker-standalone-amd
       - DOT_METRICS_ENABLED=true
+      - SIGNOZ_SQLSTORE_PROVIDER=postgres
+      - SIGNOZ_SQLSTORE_POSTGRES_DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=require
     healthcheck:
       test:
         - CMD
