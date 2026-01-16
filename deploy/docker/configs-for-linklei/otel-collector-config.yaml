@@ -1,0 +1,166 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  # Coleta métricas OTLP de aplicações
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Coleta métricas de logs de acesso do NGINX
+  filelog/nginx-access:
+    include: ["/var/log/nginx/linklei-access.log"]
+    start_at: end
+
+    operators:
+      - type: json_parser
+        # timestamp:
+        #   parse_from: attributes.body.timestamp
+        #   layout: '%Y-%m-%dT%H:%M:%S%z'
+
+  # Coleta métricas de logs de erro do NGINX
+  filelog/nginx-error:
+    include: ["/var/log/nginx/linklei-error.log"]
+    start_at: end
+    operators:
+      - type: add
+        field: attributes.source
+        value: nginx-error
+
+  # ===== HOSTMETRICS: Métricas de infraestrutura da EC2 =====
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      # CPU usage por core e total
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      
+      # Uso de memória ram
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      
+      # Uso de disco
+      disk:
+        metrics:
+          system.disk.io:
+            enabled: true
+          system.disk.operations:
+            enabled: true
+      
+      # Uso de filesystem (partições)
+      filesystem:
+        # Monitorar apenas os pontos de montagem especificados:
+        include_mount_points:
+          mount_points:
+            - ^/$              # Sistema raiz
+          match_type: regexp
+          
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
+      
+      # Load average do sistema
+      load:
+        metrics:
+          system.cpu.load_average.1m:
+            enabled: true
+          system.cpu.load_average.5m:
+            enabled: true
+          system.cpu.load_average.15m:
+            enabled: true
+      
+      # Estatísticas de rede
+      network:
+        metrics:
+          system.network.io:
+            enabled: true
+          system.network.errors:
+            enabled: true
+          system.network.connections:
+            enabled: true
+      
+      # Informações de processos
+      processes:
+        metrics:
+          system.processes.count:
+            enabled: true
+      
+      # Uso de memória de paginacao (swap)
+      paging:
+        metrics:
+          system.paging.usage:
+            enabled: true
+          system.paging.operations:
+            enabled: true
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+  resource:
+    # Adiciona atributos personalizados:
+    attributes:
+      - key: service.name
+        value: "nginx-server"
+        action: upsert
+    # IP privado da instancia
+      - key: instance-private-ip
+        value: "${EC2_PRIVATE_IP}"
+        action: upsert
+
+
+    # Adiciona atributos de recursos
+  resourcedetection/ec2:
+    detectors: [env, ec2, system]
+    ec2:
+      # Coleta metadados da EC2
+      tags:
+        - ^Name$
+        - ^type$
+        - ^AutoScalingGroup$
+    timeout: 5s
+    override: false
+
+
+exporters:
+  # Usar modo debug para verificar dados enviados
+  #debug:
+  #  verbosity: detailed
+  #  sampling_initial: 5
+  #  sampling_thereafter: 200
+
+  otlp:
+    endpoint: "${SIGNOZ_ENDPOINT}"
+    tls:
+      insecure: true
+
+service:
+  extensions: [health_check]
+  pipelines:
+      # Pipeline de métricas (inclui hostmetrics)
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [resourcedetection/ec2, resource, batch]
+      exporters: [otlp]
+    
+    # Traces
+    traces:
+      receivers: [otlp]
+      processors: [resourcedetection/ec2, resource, batch]
+      exporters: [otlp]
+    
+    # Logs - incluindo logs do nginx:
+    logs:
+      receivers: [filelog/nginx-access, filelog/nginx-error]
+      processors: [resource, batch]
+      #exporters: [debug, otlp]
+      exporters: [otlp]

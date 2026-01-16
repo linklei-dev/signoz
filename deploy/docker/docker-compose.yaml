@@ -133,7 +133,7 @@ services:
       - DEPLOYMENT_TYPE=docker-standalone-amd
       - DOT_METRICS_ENABLED=true
       - SIGNOZ_SQLSTORE_PROVIDER=postgres
-      - SIGNOZ_SQLSTORE_POSTGRES_DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=require
+      - SIGNOZ_SQLSTORE_POSTGRES_DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable
     healthcheck:
       test:
         - CMD
@@ -160,9 +160,11 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
       - LOW_CARDINAL_EXCEPTION_GROUPING=false
     ports:
-      # - "1777:1777"     # pprof extension
+      - "1777:1777"     # pprof extension
+      - "13133:13133"   # health_check extension
       - "4317:4317" # OTLP gRPC receiver
       - "4318:4318" # OTLP HTTP receiver
+      - "8082:8082" # HTTP log receiver
     depends_on:
       signoz:
         condition: service_healthy

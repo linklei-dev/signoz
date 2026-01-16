@@ -23,14 +23,31 @@ receivers:
               - localhost:8888
             labels:
               job_name: otel-collector
+  # Receiver para logs HTTP em formato JSON
+  httplogreceiver/json:
+    endpoint: 0.0.0.0:8082
+    source: json
+
+  
+  # Health check para monitorar a disponibilidade do site app.linklei.com.br
+  httpcheck/linklei_health:
+    targets:
+      - endpoint: "https://app.linklei.com.br/health"
+        method: GET
+        headers:
+          User-Agent: "SigNoz-HealthCheck/1.0"
+          Accept: "application/json"
+    collection_interval: 120s  # Verifica a cada 2 min
+    timeout: 10s # Tempo limite de 10 segundos
+
 processors:
   batch:
-    send_batch_size: 10000
-    send_batch_max_size: 11000
+    send_batch_size: 1000
+    send_batch_max_size: 1500
     timeout: 10s
   batch/meter:
-    send_batch_max_size: 25000
-    send_batch_size: 20000
+    send_batch_max_size: 2500
+    send_batch_size: 2000
     timeout: 1s
   resourcedetection:
     # Using OTEL_RESOURCE_ATTRIBUTES envvar, env detector adds custom labels.
@@ -95,7 +112,7 @@ service:
       processors: [signozspanmetrics/delta, batch]
       exporters: [clickhousetraces, signozmeter]
     metrics:
-      receivers: [otlp]
+      receivers: [otlp, httpcheck/linklei_health]
       processors: [batch]
       exporters: [signozclickhousemetrics, signozmeter]
     metrics/prometheus:
@@ -103,7 +120,7 @@ service:
       processors: [batch]
       exporters: [signozclickhousemetrics, signozmeter]
     logs:
-      receivers: [otlp]
+      receivers: [otlp, httplogreceiver/json]
       processors: [batch]
       exporters: [clickhouselogsexporter, signozmeter]
     metrics/meter:

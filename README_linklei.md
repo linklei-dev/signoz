@@ -39,3 +39,30 @@ GRANT ALL ON SCHEMA public TO signoz_user;
 GRANT CREATE ON SCHEMA public TO signoz_user;
 
 ```
+
+
+## Comando CURL para testar envio de log para o servidor do signoz:
+
+```sh
+curl --location 'http://172.31.93.164:8082' \
+--header 'Content-Type: application/json' \
+--data '[
+  {
+      "trace_id": "000000000000000018c51935df0b93b9",
+      "span_id": "18c51935df0b93b9",
+      "trace_flags": 0,
+      "severity_text": "info",
+      "severity_number": 4,
+      "attributes": {
+          "method": "GET",
+          "path": "/api/test"
+      },
+      "resources": {
+          "host": "myhost",
+          "namespace": "prod"
+      },
+      "message": "This is a log line"
+  }
+]'
+
+```
